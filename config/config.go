@@ -25,6 +25,14 @@ func Load() {
 					"\n**%d** snipe-able maps were found." +
 					"\nThere are **%d** common maps where you are in the lead." +
 					"\nThe process took **%dms**",
+				BKUpdateDesc: "Hello there!" +
+					"\nI have collected some [BurgerKing](https://burgerking.de) coupons, %d in total!" +
+					"\nUnfortunately, they are only available in Germany..." +
+					"\nHave fun!",
+				BKCouponInfoDesc: "Hello there!" +
+					"\nAll current **[BurgerKing®](https://www.burgerking.de/)** coupons are fetched every day at midnight." +
+					"\nTo view the coupons, use the dropdown menu below!" +
+					"\nBon appetit!",
 			},
 			BeatSaber: BeatSaber{
 				SnipeFileDescription: "Snipe %s Playlist of %s",
@@ -32,6 +40,12 @@ func Load() {
 			},
 			BurgerKing: BurgerKing{
 				NoExpirationDate: ":warning: No expiration date found!",
+			},
+			Discord: Discord{
+				BKUpdateHookList: []string{},
+			},
+			WebServerAPI: WebServer{
+				APIPort: "9091",
 			},
 		}
 		bytes, _ := json.MarshalIndent(defaultConfig, "", "\t")
@@ -58,10 +72,11 @@ func Load() {
 
 type (
 	Configuration struct {
-		Discord    Discord    `json:"discord"`
-		Formatting Formatting `json:"formatting"`
-		BeatSaber  BeatSaber  `json:"beatSaber"`
-		BurgerKing BurgerKing `json:"burgerKing"`
+		WebServerAPI WebServer  `json:"webserver"`
+		Discord      Discord    `json:"discord"`
+		Formatting   Formatting `json:"formatting"`
+		BeatSaber    BeatSaber  `json:"beatSaber"`
+		BurgerKing   BurgerKing `json:"burgerKing"`
 	}
 	BeatSaber struct {
 		SnipeImage           string `json:"snipeImage"`
@@ -72,7 +87,8 @@ type (
 		HoldFileDescription  string `json:"holdFileDescription"`
 	}
 	Discord struct {
-		BotToken string `json:"botToken"`
+		BotToken         string   `json:"botToken"`
+		BKUpdateHookList []string `json:"bkUpdateHooks"`
 	}
 	Formatting struct {
 		InternalError        string `json:"internalError"`
@@ -81,8 +97,15 @@ type (
 		FetchingScoresFailed string `json:"fetchingScoresFailed"`
 		AlreadySniping       string `json:"alreadySniping"`
 		PlaylistMsg          string `json:"playlistMsg"`
+		BKUpdateDesc         string `json:"bkUpdateDesc"`
+		BKCouponInfoDesc     string `json:"bkCouponInfoDesc"`
 	}
 	BurgerKing struct {
 		NoExpirationDate string `json:"noExpirationDate"`
+	}
+	WebServer struct {
+		EnableAPI bool   `json:"enableApi"`
+		APIPort   string `json:"apiPort"`
+		APIUrl    string `json:"apiUrl"`
 	}
 )

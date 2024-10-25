@@ -8,6 +8,9 @@ import (
 )
 
 func FindQRCodes(img image.Image) (codes []*gozxing.Result) {
+	if img == nil {
+		return nil
+	}
 	rgbaImg := image.NewRGBA(img.Bounds())
 	draw.Draw(rgbaImg, img.Bounds(), img, image.Point{}, draw.Src)
 

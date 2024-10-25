@@ -1,6 +1,7 @@
 package burgerking
 
 import (
+	"HelpingPixl/config"
 	"HelpingPixl/models"
 	"HelpingPixl/utils"
 	"bytes"
@@ -11,10 +12,14 @@ import (
 	"github.com/makiuchi-d/gozxing/qrcode"
 	"image/jpeg"
 	"strconv"
+	"strings"
 	"time"
 )
 
-var qrCodeSize = 512
+const (
+	maxChars   = 6000
+	qrCodeSize = 512
+)
 
 func BuildCouponMsg(coupon *models.Coupon, ref snowflake.ID) discord.MessageCreate {
 	startTime := time.Now().UnixNano()
@@ -50,7 +55,7 @@ func BuildCouponMsg(coupon *models.Coupon, ref snowflake.ID) discord.MessageCrea
 	eBuilder.SetTitle("Coupon 📄")
 	eBuilder.SetImage(coupon.ImageUrl)
 	eBuilder.SetFooter(fmt.Sprintf("by @hallotheengineer | %dms", (time.Now().UnixNano()-startTime)/1e6), "https://cdn.discordapp.com/avatars/592779824519446538/b3992968a0bce170a4ac0b22e40fa97e.webp?size=40")
-	eBuilder.AddField("Product", coupon.Description, true)
+	eBuilder.AddField("Product", formatDescription(coupon.Title, coupon.Description), true)
 	eBuilder.AddField("Price Change", formatPrice(coupon.OfferPrice, coupon.Discount), true)
 	eBuilder.AddField("Code", getCode(coupon), false)
 	eBuilder.AddField("Validity", formatStartEndDate(coupon.StartDate, coupon.ExpirationDate), true)
@@ -65,13 +70,14 @@ func BuildCouponMsg(coupon *models.Coupon, ref snowflake.ID) discord.MessageCrea
 	return b.Build()
 }
 
-func getCode(coupon *models.Coupon) (str string) {
-	str = coupon.Plu
-	if coupon.ConstantPlu != "" {
-		str += " | " + coupon.ConstantPlu
+func formatDescription(title, description string) string {
+	description = strings.TrimPrefix(description, " ")
+	if strings.HasPrefix(description, "+") {
+		return title + " " + description
 	}
-	return
+	return description
 }
+
 func BuildCouponCompMsg(cache *models.CouponCache) discord.MessageCreate {
 	b := discord.NewMessageCreateBuilder()
 	eBuilder := discord.NewEmbedBuilder()
@@ -79,7 +85,7 @@ func BuildCouponCompMsg(cache *models.CouponCache) discord.MessageCreate {
 	eBuilder.SetTitle("🍔 BurgerKing® Coupons")
 	eBuilder.SetColor(16750848)
 	eBuilder.SetFooter("by @hallotheengineer", "https://cdn.discordapp.com/avatars/592779824519446538/b3992968a0bce170a4ac0b22e40fa97e.webp?size=40")
-	eBuilder.SetDescription("Hello there!\nAll current **[BurgerKing®](https://www.burgerking.de/)** coupons are fetched every day at midnight.\nTo view the coupons, use the dropdown menu below!\nBon appetit!")
+	eBuilder.SetDescription(config.Config.Formatting.BKCouponInfoDesc)
 
 	b.AddEmbeds(eBuilder.Build())
 
@@ -102,6 +108,71 @@ func BuildCouponCompMsg(cache *models.CouponCache) discord.MessageCreate {
 	}
 
 	return b.Build()
+}
+func GetCouponUpdateEmbeds(coupons *[]models.Coupon, oldCoupons *[]models.Coupon, timeElapsed int) (messages []discord.WebhookMessageCreate) {
+	b := discord.NewWebhookMessageCreateBuilder()
+
+	eBu := discord.NewEmbedBuilder()
+	eBu.SetTitle("🍔 BurgerKing Coupons")
+	eBu.SetDescription(fmt.Sprintf(config.Config.Formatting.BKUpdateDesc, len(*coupons)))
+	eBu.SetFooter(fmt.Sprintf("by @hallotheengineer | %dms", timeElapsed), "https://cdn.discordapp.com/avatars/592779824519446538/b3992968a0bce170a4ac0b22e40fa97e.webp?size=40")
+	eBu.AddField("Useful links", "> [SparKings](https://burgerking.de/sparkings)\n> [WebView](https://www.burgerking.de/rewards/offers)\n> [KingFinder](https://burgerking.de/store-locator)", false)
+	eBu.SetColor(16750848)
+
+	var embedList []discord.Embed
+
+	embedList = append(embedList, eBu.Build())
+
+	//Comparison / New Coupons
+	var newCoupons []models.Coupon
+	for _, newCoupon := range *coupons {
+		var existing bool
+		for _, oldCoupon := range *oldCoupons {
+			if oldCoupon.Id == newCoupon.Id {
+				existing = true
+			}
+		}
+
+		if !existing {
+			newCoupons = append(newCoupons, newCoupon)
+		}
+	}
+	newCEmbed := discord.NewEmbedBuilder()
+	newCEmbed.SetTitle("New Coupons (**" + strconv.Itoa(len(newCoupons)) + "**)")
+	for _, coupon := range newCoupons {
+		newCEmbed.Description += "> Coupon #" + getCode(&coupon) + ": " + coupon.Title + "\n"
+	}
+	embedList = append(embedList, newCEmbed.Build())
+
+	//Chunking
+	chunks := utils.ChunkBy[models.Coupon](*coupons, 18)
+	for i, chunk := range chunks {
+		eBuilder := discord.NewEmbedBuilder()
+		eBuilder.SetTitle(fmt.Sprintf("Current Coupons (%d/%d)", i+1, len(chunks)))
+		for _, coupon := range chunk {
+			eBuilder.AddField(coupon.Title, fmt.Sprintf("> **Description**: %s\n> **Price**: %s\n> **Code**: %s", coupon.Description, formatPrice(coupon.OfferPrice, coupon.Discount), getCode(&coupon)), false)
+		}
+		eBuilder.SetFooter("by @hallotheengineer", "https://cdn.discordapp.com/avatars/592779824519446538/b3992968a0bce170a4ac0b22e40fa97e.webp?size=40")
+		embedList = append(embedList, eBuilder.Build())
+	}
+
+	var currentBatch []discord.Embed
+	currentChars := 0
+
+	for _, embed := range embedList {
+		embedChars := calculateCharacterCount(embed)
+		if currentChars+embedChars > maxChars {
+			b.AddEmbeds(currentBatch...)
+			messages = append(messages, b.Build())
+			currentBatch = []discord.Embed{}
+			currentChars = 0
+		}
+
+		currentBatch = append(currentBatch, embed)
+		currentChars += embedChars
+	}
+
+	return
 }
 
 func formatStartEndDate(start int64, end int64) (str string) {
@@ -130,4 +201,25 @@ func formatPrice(price int, discount int) string {
 		priceStr = "-" + strconv.Itoa(discount) + "%"
 	}
 	return priceStr
+}
+func getCode(coupon *models.Coupon) (str string) {
+	str = coupon.Plu
+	if coupon.ConstantPlu != "" {
+		str += " | " + coupon.ConstantPlu
+	}
+	return
+}
+func calculateCharacterCount(embed discord.Embed) int {
+	totalChars := 0
+	totalChars += len(embed.Title) + len(embed.Description)
+	for _, field := range embed.Fields {
+		totalChars += len(field.Name) + len(field.Value)
+	}
+	if embed.Footer != nil {
+		totalChars += len(embed.Footer.Text)
+	}
+	if embed.Author != nil {
+		totalChars += len(embed.Author.Name)
+	}
+	return totalChars
 }

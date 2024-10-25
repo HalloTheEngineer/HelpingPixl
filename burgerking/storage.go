@@ -48,7 +48,7 @@ func Load() {
 		}
 		fetchedCoupons, _, ms, err := Crawl()
 		if err != nil {
-			slog.Error("Fetching coupons failed: ", err)
+			slog.Error("(=) Fetching coupons failed: ", err)
 			return
 		}
 		SaveCoupons(fetchedCoupons)

@@ -6,57 +6,53 @@ import (
 	"HelpingPixl/utils"
 	"cmp"
 	"fmt"
-	"github.com/disgoorg/disgo/events"
 	"log/slog"
 	"math"
 	"slices"
 	"strconv"
 )
 
-func SnipeHoldPlaylist(e *events.ApplicationCommandInteractionCreate, self string, target string, leaderboard int) (models.Playlist, models.Playlist, string, bool) {
-	var snipePlaylist models.Playlist
-	var holdPlaylist models.Playlist
+func SnipeHoldPlaylist(selfTag, targetTag, selfId, targetId *string, leaderboard int) (snipePlaylist, holdPlaylist *models.Playlist, errorStr string) {
 	var validSnipeMaps []models.PlaylistSongEntry
 	var validHoldMaps []models.PlaylistSongEntry
 
+	var tempSnipePlaylist models.Playlist
+	var tempHoldPlaylist models.Playlist
+
 	switch leaderboard {
 	case 0:
-		selfPlayerStructs, err := utils.FetchToStruct[models.BLPlayersResponse](fmt.Sprintf(models.BLBase+models.BLPlayers, self))
-		if err != nil {
-			slog.Error(err.Error())
-			return models.Playlist{}, models.Playlist{}, fmt.Sprintf(config.Config.Formatting.InternalError), false
+		var selfStruct *models.BLPlayerResponse
+		var targetStruct *models.BLPlayerResponse
+
+		if selfId != nil && targetId != nil {
+			selfStruct, _ = GetBLPlayerById(*selfId)
+			targetStruct, _ = GetBLPlayerById(*targetId)
+		} else if selfTag != nil && targetTag != nil {
+			selfStruct, _ = FindBLPlayerByName(*selfTag)
+			targetStruct, _ = FindBLPlayerByName(*targetTag)
+		} else {
+			return nil, nil, config.Config.Formatting.NoPlayerFound
 		}
 
-		targetPlayerStructs, err := utils.FetchToStruct[models.BLPlayersResponse](fmt.Sprintf(models.BLBase+models.BLPlayers, target))
-		if err != nil {
-			slog.Error(err.Error())
-			return models.Playlist{}, models.Playlist{}, fmt.Sprintf(config.Config.Formatting.InternalError), false
+		if selfStruct == nil || targetStruct == nil {
+			return nil, nil, config.Config.Formatting.NoPlayerFound
 		}
 
-		if !(len(selfPlayerStructs.Data) > 0) {
-			return models.Playlist{}, models.Playlist{}, fmt.Sprintf(config.Config.Formatting.NoPlayerFound, self), false
-		}
-		if !(len(targetPlayerStructs.Data) > 0) {
-			return models.Playlist{}, models.Playlist{}, fmt.Sprintf(config.Config.Formatting.NoPlayerFound, target), false
-		}
-
-		selfStruct := selfPlayerStructs.Data[0]
-		targetStruct := targetPlayerStructs.Data[0]
-
-		_ = e.DeferCreateMessage(true)
+		selfId = &selfStruct.Id
+		targetId = &targetStruct.Id
 
 		//Fetching Scores
 
 		//Self
 		err, selfScoresStructs := collectBLScores(selfStruct.Id)
 		if err != nil {
-			return models.Playlist{}, models.Playlist{}, fmt.Sprintf(config.Config.Formatting.FetchingScoresFailed, selfStruct.Name), true
+			return nil, nil, fmt.Sprintf(config.Config.Formatting.FetchingScoresFailed, selfStruct.Name)
 		}
 
 		//Target
 		err, targetScoresStructs := collectBLScores(targetStruct.Id)
 		if err != nil {
-			return models.Playlist{}, models.Playlist{}, fmt.Sprintf(config.Config.Formatting.FetchingScoresFailed, targetStruct.Name), true
+			return nil, nil, fmt.Sprintf(config.Config.Formatting.FetchingScoresFailed, targetStruct.Name)
 		}
 
 		//Playlist Generation
@@ -93,47 +89,43 @@ func SnipeHoldPlaylist(e *events.ApplicationCommandInteractionCreate, self strin
 			HoldCount:        len(validHoldMaps),
 		}
 
-		snipePlaylist.Stats = stats
-		holdPlaylist.Stats = stats
-		snipePlaylist.PlaylistTitle = fmt.Sprintf("Snipe BL (%s ▶ %s)", selfStruct.Name, targetStruct.Name)
-		holdPlaylist.PlaylistTitle = fmt.Sprintf("Hold BL (%s ● %s)", selfStruct.Name, targetStruct.Name)
+		tempSnipePlaylist.Stats = stats
+		tempHoldPlaylist.Stats = stats
+		tempSnipePlaylist.PlaylistTitle = fmt.Sprintf("Snipe BL (%s ▶ %s)", selfStruct.Name, targetStruct.Name)
+		tempHoldPlaylist.PlaylistTitle = fmt.Sprintf("Hold BL (%s ● %s)", selfStruct.Name, targetStruct.Name)
 		break
 	case 1:
 
-		selfPlayerStructs, err := utils.FetchToStruct[models.SSPlayersResponse](fmt.Sprintf(models.SSBase+models.SSPlayers, self))
-		if err != nil {
-			slog.Error(err.Error())
-			return models.Playlist{}, models.Playlist{}, fmt.Sprintf(config.Config.Formatting.InternalError), false
+		var selfStruct *models.SSPlayerResponse
+		var targetStruct *models.SSPlayerResponse
+
+		if selfId != nil && targetId != nil {
+			selfStruct, _ = GetSSPlayerById(*selfId)
+			targetStruct, _ = GetSSPlayerById(*targetId)
+		} else if selfTag != nil && targetTag != nil {
+			selfStruct, _ = FindSSPlayerByName(*selfTag)
+			targetStruct, _ = FindSSPlayerByName(*targetTag)
+		} else {
+			return nil, nil, config.Config.Formatting.NoPlayerFound
 		}
 
-		targetPlayerStructs, err := utils.FetchToStruct[models.SSPlayersResponse](fmt.Sprintf(models.SSBase+models.SSPlayers, target))
-		if err != nil {
-			slog.Error(err.Error())
-			return models.Playlist{}, models.Playlist{}, fmt.Sprintf(config.Config.Formatting.InternalError), false
+		if selfStruct == nil || targetStruct == nil {
+			return nil, nil, config.Config.Formatting.NoPlayerFound
 		}
 
-		if !(len(selfPlayerStructs.Players) > 0) {
-			return models.Playlist{}, models.Playlist{}, fmt.Sprintf(config.Config.Formatting.NoPlayerFound, self), false
-		}
-		if !(len(targetPlayerStructs.Players) > 0) {
-			return models.Playlist{}, models.Playlist{}, fmt.Sprintf(config.Config.Formatting.NoPlayerFound, target), false
-		}
-
-		selfStruct := selfPlayerStructs.Players[0]
-		targetStruct := targetPlayerStructs.Players[0]
-
-		_ = e.DeferCreateMessage(true)
+		selfId = &selfStruct.Id
+		targetId = &targetStruct.Id
 
 		//Self
 		err, selfScoresStructs := collectSSScores(selfStruct.Id)
 		if err != nil {
-			return models.Playlist{}, models.Playlist{}, fmt.Sprintf(config.Config.Formatting.FetchingScoresFailed, selfStruct.Name), true
+			return nil, nil, fmt.Sprintf(config.Config.Formatting.FetchingScoresFailed, selfStruct.Name)
 		}
 
 		//Target
 		err, targetScoresStructs := collectSSScores(targetStruct.Id)
 		if err != nil {
-			return models.Playlist{}, models.Playlist{}, fmt.Sprintf(config.Config.Formatting.FetchingScoresFailed, targetStruct.Name), true
+			return nil, nil, fmt.Sprintf(config.Config.Formatting.FetchingScoresFailed, targetStruct.Name)
 		}
 
 		for _, sEntry := range selfScoresStructs.PlayerScores {
@@ -167,10 +159,10 @@ func SnipeHoldPlaylist(e *events.ApplicationCommandInteractionCreate, self strin
 			HoldCount:        len(validHoldMaps),
 		}
 
-		snipePlaylist.Stats = stats
-		holdPlaylist.Stats = stats
-		snipePlaylist.PlaylistTitle = fmt.Sprintf("Snipe SS (%s ▶ %s)", selfStruct.Name, targetStruct.Name)
-		holdPlaylist.PlaylistTitle = fmt.Sprintf("Hold SS (%s ● %s)", selfStruct.Name, targetStruct.Name)
+		tempSnipePlaylist.Stats = stats
+		tempHoldPlaylist.Stats = stats
+		tempSnipePlaylist.PlaylistTitle = fmt.Sprintf("Snipe SS (%s ▶ %s)", selfStruct.Name, targetStruct.Name)
+		tempHoldPlaylist.PlaylistTitle = fmt.Sprintf("Hold SS (%s ● %s)", selfStruct.Name, targetStruct.Name)
 	}
 
 	//Playlist Packing
@@ -182,17 +174,24 @@ func SnipeHoldPlaylist(e *events.ApplicationCommandInteractionCreate, self strin
 		return cmp.Compare(a.PpDiff, b.PpDiff)
 	})
 
-	snipePlaylist.PlaylistAuthor = "PixlPainter"
-	snipePlaylist.Image = config.Config.BeatSaber.SnipeImage
-	snipePlaylist.CustomData.SyncUrl = config.Config.BeatSaber.SnipeSyncUrl
-	snipePlaylist.Songs = validSnipeMaps
+	tempSnipePlaylist.PlaylistAuthor = "PixlPainter"
+	tempSnipePlaylist.Image = config.Config.BeatSaber.SnipeImage
+	tempSnipePlaylist.CustomData.SyncUrl = buildSyncUrl(*selfId, *targetId, "snipe", leaderboard)
+	tempSnipePlaylist.Songs = validSnipeMaps
 
-	holdPlaylist.PlaylistAuthor = "PixlPainter"
-	holdPlaylist.Image = config.Config.BeatSaber.HoldImage
-	holdPlaylist.CustomData.SyncUrl = config.Config.BeatSaber.HoldSyncUrl
-	holdPlaylist.Songs = validHoldMaps
+	tempHoldPlaylist.PlaylistAuthor = "PixlPainter"
+	tempHoldPlaylist.Image = config.Config.BeatSaber.HoldImage
+	tempHoldPlaylist.CustomData.SyncUrl = buildSyncUrl(*selfId, *targetId, "hold", leaderboard)
+	tempHoldPlaylist.Songs = validHoldMaps
 
-	return snipePlaylist, holdPlaylist, "", true
+	return &tempSnipePlaylist, &tempHoldPlaylist, ""
+}
+
+func buildSyncUrl(self, target, plType string, leaderboard int) string {
+	if config.Config.WebServerAPI.APIUrl == "" {
+		return ""
+	}
+	return fmt.Sprintf("%s/beatsaber/playlist/%s?self=%s&target=%s&leaderboard=%d", config.Config.WebServerAPI.APIUrl, plType, self, target, leaderboard)
 }
 
 func formatGameMode(mode string) string {

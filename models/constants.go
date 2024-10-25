@@ -3,15 +3,15 @@ package models
 const (
 	BLBase         = "https://api.beatleader.xyz"
 	BLPlayerScores = "/player/%s/scores/compact?sortBy=pp&order=desc&count=100&page=%d"
-	BLPlayers      = "/players?search=%s&leaderboardContext=general&page=1&count=10"
+	BLPlayersQuery = "/players?search=%s&leaderboardContext=general&page=1&count=10"
+	BLPlayer       = "/player/%s?stats=false&keepOriginalId=true&leaderboardContext=general"
 
 	SSBase         = "https://scoresaber.com/api"
+	SSPlayer       = "/player/%s/basic"
 	SSPlayers      = "/players?search=%s"
 	SSPlayerScores = "/player/%s/scores?limit=60&withMetadata=true"
-	SSPlayer       = "/api/player/%s/basic"
 
 	BKGraphQlUrl       = "https://czqk28jt.apicdn.sanity.io/v1/graphql/prod_bk_de/default"
-	BKCouponApiUrl     = "https://api.burgerking.de/api/o2uvrPdUY57J5WwYs6NtzZ2Knk7TnAUY/v4/de/de/coupons/"
 	BKCouponImageUrl   = "https://cdn.sanity.io/images/czqk28jt/prod_bk_de/%s?w=512"
 	BKCouponWebViewUrl = "https://www.burgerking.de/rewards/offers/%s"
 )
@@ -146,7 +146,7 @@ var BKSystemwideOffersQuery = `query MyQuery {
 `
 
 type ResponseStructs interface {
-	BLSongsResponse | BLPlayersResponse | SSPlayersResponse | ScoresResponseStructs
+	BLSongsResponse | BLPlayersResponse | BLPlayerResponse | SSPlayersResponse | SSPlayerResponse | ScoresResponseStructs
 }
 type ScoresResponseStructs interface {
 	BLScoresResponse | SSScoresResponse

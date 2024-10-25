@@ -1,10 +1,9 @@
 package discord
 
 import (
+	"HelpingPixl/beatsaber"
 	"HelpingPixl/burgerking"
 	"HelpingPixl/config"
-	"HelpingPixl/discord/modules/beatsaber"
-	bk "HelpingPixl/discord/modules/burgerking"
 	"HelpingPixl/models"
 	"HelpingPixl/utils"
 	"bytes"
@@ -37,7 +36,7 @@ func OnComponentInteract(e *events.ComponentInteractionCreate) {
 
 		coupon := burgerking.CachedCoupons.GetById(couponId)
 		if coupon != nil {
-			_ = e.CreateMessage(bk.BuildCouponMsg(coupon, e.Message.ID))
+			_ = e.CreateMessage(burgerking.BuildCouponMsg(coupon, e.Message.ID))
 		} else {
 			_ = e.CreateMessage(GetErrorEmbed("This coupon could not be found! Is it expired or from a past day?", true))
 		}
@@ -117,13 +116,12 @@ func OnInteractionCreate(e *events.ApplicationCommandInteractionCreate) {
 		go func() {
 			ongoingProcess[e.User().ID.String()] = true
 
-			snipe, hold, errStr, isDelayed := beatsaber.SnipeHoldPlaylist(e, self, target, leaderboard)
+			_ = e.DeferCreateMessage(true)
+
+			snipe, hold, errStr := beatsaber.SnipeHoldPlaylist(&self, &target, nil, nil, leaderboard)
 			if errStr != "" {
-				if isDelayed {
-					_, _ = Bot.Rest().UpdateInteractionResponse(AppID, e.Token(), GetUpdateErrorEmbed(config.Config.Formatting.InternalError))
-				}
+				_, _ = Bot.Rest().UpdateInteractionResponse(AppID, e.Token(), GetUpdateErrorEmbed(config.Config.Formatting.InternalError))
 				delete(ongoingProcess, e.User().ID.String())
-				_ = e.CreateMessage(GetErrorEmbed(errStr, true))
 				return
 			}
 			json := jsoniter.ConfigCompatibleWithStandardLibrary
@@ -153,7 +151,7 @@ func OnInteractionCreate(e *events.ApplicationCommandInteractionCreate) {
 			delete(ongoingProcess, e.User().ID.String())
 		}()
 	case BKCouponsCommand:
-		_ = e.CreateMessage(bk.BuildCouponCompMsg(&burgerking.CachedCoupons))
+		_ = e.CreateMessage(burgerking.BuildCouponCompMsg(&burgerking.CachedCoupons))
 	case BKRefreshCommand:
 		collectedCoupons, addCount, ms, err := burgerking.Crawl()
 		if err != nil {
@@ -235,13 +233,12 @@ func buildPlayerAutocomplete(e *events.AutocompleteInteractionCreate) (choices [
 			},
 		}
 	}
-	slog.Info(query)
 
 	if !(len(query) > 3) {
 		return []discord.AutocompleteChoice{}
 	}
 
-	players, err := utils.FetchToStruct[models.BLPlayersResponse](fmt.Sprintf(models.BLBase+models.BLPlayers, query))
+	players, err := utils.FetchToStruct[models.BLPlayersResponse](fmt.Sprintf(models.BLBase+models.BLPlayersQuery, query))
 	if err != nil {
 		return []discord.AutocompleteChoice{}
 	}

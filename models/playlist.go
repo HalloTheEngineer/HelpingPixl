@@ -5,7 +5,7 @@ type (
 		PlaylistTitle  string `json:"playlistTitle"`
 		PlaylistAuthor string `json:"playlistAuthor"`
 		CustomData     struct {
-			SyncUrl string `json:"syncUrl"`
+			SyncUrl string `json:"syncURL"`
 		} `json:"customData"`
 		Image string              `json:"image"`
 		Songs []PlaylistSongEntry `json:"songs"`

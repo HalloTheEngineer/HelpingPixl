@@ -65,35 +65,36 @@ type (
 		} `json:"leaderboard"`
 	}
 	SSPlayersResponse struct {
-		Players []struct {
-			Id             string      `json:"id"`
-			Name           string      `json:"name"`
-			ProfilePicture string      `json:"profilePicture"`
-			Bio            *string     `json:"bio"`
-			Country        string      `json:"country"`
-			Pp             float64     `json:"pp"`
-			Rank           int         `json:"rank"`
-			CountryRank    int         `json:"countryRank"`
-			Role           interface{} `json:"role"`
-			Badges         interface{} `json:"badges"`
-			Histories      string      `json:"histories"`
-			Permissions    int         `json:"permissions"`
-			Banned         bool        `json:"banned"`
-			Inactive       bool        `json:"inactive"`
-			ScoreStats     struct {
-				TotalScore            int64   `json:"totalScore"`
-				TotalRankedScore      int     `json:"totalRankedScore"`
-				AverageRankedAccuracy float64 `json:"averageRankedAccuracy"`
-				TotalPlayCount        int     `json:"totalPlayCount"`
-				RankedPlayCount       int     `json:"rankedPlayCount"`
-				ReplaysWatched        int     `json:"replaysWatched"`
-			} `json:"scoreStats"`
-			FirstSeen time.Time `json:"firstSeen"`
-		} `json:"players"`
+		Players  []SSPlayerResponse `json:"players"`
 		Metadata struct {
 			Total        int `json:"total"`
 			Page         int `json:"page"`
 			ItemsPerPage int `json:"itemsPerPage"`
 		} `json:"metadata"`
+	}
+	SSPlayerResponse struct {
+		Id             string      `json:"id"`
+		Name           string      `json:"name"`
+		ProfilePicture string      `json:"profilePicture"`
+		Bio            *string     `json:"bio"`
+		Country        string      `json:"country"`
+		Pp             float64     `json:"pp"`
+		Rank           int         `json:"rank"`
+		CountryRank    int         `json:"countryRank"`
+		Role           interface{} `json:"role"`
+		Badges         interface{} `json:"badges"`
+		Histories      string      `json:"histories"`
+		Permissions    int         `json:"permissions"`
+		Banned         bool        `json:"banned"`
+		Inactive       bool        `json:"inactive"`
+		ScoreStats     struct {
+			TotalScore            int64   `json:"totalScore"`
+			TotalRankedScore      int     `json:"totalRankedScore"`
+			AverageRankedAccuracy float64 `json:"averageRankedAccuracy"`
+			TotalPlayCount        int     `json:"totalPlayCount"`
+			RankedPlayCount       int     `json:"rankedPlayCount"`
+			ReplaysWatched        int     `json:"replaysWatched"`
+		} `json:"scoreStats"`
+		FirstSeen time.Time `json:"firstSeen"`
 	}
 )
