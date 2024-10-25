@@ -17,7 +17,7 @@ func ScheduleDailyRefresh() error {
 
 	c := cron.New()
 
-	id, err := c.AddFunc("0 23 * * *", updateCoupons)
+	id, err := c.AddFunc(config.Config.BurgerKing.UpdateCronSyntax, updateCoupons)
 	if err != nil {
 		return err
 	}
@@ -53,7 +53,7 @@ func postToHooks(coupons *[]models.Coupon, timeElapsed int) {
 		}
 
 		for _, msg := range messages {
-			_, err := client.CreateMessage(msg)
+			_, err = client.CreateMessage(msg)
 			if err != nil {
 				slog.Error("Error while posting coupons to hook "+strconv.Itoa(i)+": ", err.Error())
 				break

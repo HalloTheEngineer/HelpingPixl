@@ -110,8 +110,6 @@ func BuildCouponCompMsg(cache *models.CouponCache) discord.MessageCreate {
 	return b.Build()
 }
 func GetCouponUpdateEmbeds(coupons *[]models.Coupon, oldCoupons *[]models.Coupon, timeElapsed int) (messages []discord.WebhookMessageCreate) {
-	b := discord.NewWebhookMessageCreateBuilder()
-
 	eBu := discord.NewEmbedBuilder()
 	eBu.SetTitle("🍔 BurgerKing Coupons")
 	eBu.SetDescription(fmt.Sprintf(config.Config.Formatting.BKUpdateDesc, len(*coupons)))
@@ -150,27 +148,47 @@ func GetCouponUpdateEmbeds(coupons *[]models.Coupon, oldCoupons *[]models.Coupon
 		eBuilder := discord.NewEmbedBuilder()
 		eBuilder.SetTitle(fmt.Sprintf("Current Coupons (%d/%d)", i+1, len(chunks)))
 		for _, coupon := range chunk {
-			eBuilder.AddField(coupon.Title, fmt.Sprintf("> **Description**: %s\n> **Price**: %s\n> **Code**: %s", coupon.Description, formatPrice(coupon.OfferPrice, coupon.Discount), getCode(&coupon)), false)
+			eBuilder.AddField(coupon.Description, fmt.Sprintf("> **Price**: %s\n> **Code**: %s", formatPrice(coupon.OfferPrice, coupon.Discount), getCode(&coupon)), false)
 		}
 		eBuilder.SetFooter("by @hallotheengineer", "https://cdn.discordapp.com/avatars/592779824519446538/b3992968a0bce170a4ac0b22e40fa97e.webp?size=40")
 		embedList = append(embedList, eBuilder.Build())
 	}
 
-	var currentBatch []discord.Embed
-	currentChars := 0
-
+	//Temporary fix for chunking
 	for _, embed := range embedList {
-		embedChars := calculateCharacterCount(embed)
-		if currentChars+embedChars > maxChars {
-			b.AddEmbeds(currentBatch...)
-			messages = append(messages, b.Build())
-			currentBatch = []discord.Embed{}
-			currentChars = 0
-		}
-
-		currentBatch = append(currentBatch, embed)
-		currentChars += embedChars
+		b := discord.NewWebhookMessageCreateBuilder()
+		b.AddEmbeds(embed)
+		messages = append(messages, b.Build())
 	}
+
+	/*
+			//Chunking
+		//TODO: Fix
+			var currentBatch []discord.Embed
+			currentChars := 0
+
+			for _, embed := range embedList {
+				embedChars := calculateCharacterCount(embed)
+				if currentChars+embedChars >= maxChars {
+					b := discord.NewWebhookMessageCreateBuilder()
+					b.AddEmbeds(currentBatch...)
+
+					indent, err := json.MarshalIndent(currentBatch, "", "  ")
+					if err != nil {
+						return
+					}
+					slog.Info(string(indent))
+
+					messages = append(messages, b.Build())
+					currentBatch = []discord.Embed{}
+					currentChars = 0
+				}
+
+				currentBatch = append(currentBatch, embed)
+				currentChars += embedChars
+			}
+
+	*/
 
 	return
 }

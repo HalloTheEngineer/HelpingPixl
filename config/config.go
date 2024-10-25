@@ -39,6 +39,7 @@ func Load() {
 				HoldFileDescription:  "Hold %s Playlist of %s",
 			},
 			BurgerKing: BurgerKing{
+				UpdateCronSyntax: "0 23 * * *",
 				NoExpirationDate: ":warning: No expiration date found!",
 			},
 			Discord: Discord{
@@ -101,6 +102,7 @@ type (
 		BKCouponInfoDesc     string `json:"bkCouponInfoDesc"`
 	}
 	BurgerKing struct {
+		UpdateCronSyntax string `json:"updateCronSyntax"`
 		NoExpirationDate string `json:"noExpirationDate"`
 	}
 	WebServer struct {
